@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Prämien" />
+<title>CEO Prämien-Rechner</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #1a56a0;
+    --blue-light: #e8f0fa;
+    --blue-mid: #2a78d6;
+    --gray-100: #f4f5f7;
+    --gray-200: #e8eaed;
+    --gray-400: #9aa0aa;
+    --gray-600: #4a5260;
+    --gray-900: #1a1e27;
+    --white: #ffffff;
+    --success: #0e7c4a;
+    --success-bg: #e6f4ee;
+    --danger: #b91c1c;
+    --danger-bg: #fef2f2;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 0.5px rgba(0,0,0,0.06);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--gray-100);
+    color: var(--gray-900);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--blue);
+    color: white;
+    padding: 16px 20px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+  .header-sub { font-size: 12px; opacity: 0.7; margin-top: 1px; }
+
+  /* TABS */
+  .tabs {
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-200);
+    display: flex;
+    padding: 0 16px;
+  }
+  .tab {
+    padding: 13px 16px 11px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gray-400);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+  /* MAIN */
+  .main { padding: 16px; max-width: 680px; margin: 0 auto; }
+
+  /* CARD */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray-400);
+    margin-bottom: 14px;
+  }
+
+  /* INPUTS */
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 13px; color: var(--gray-600); margin-bottom: 5px; font-weight: 500; }
+  .field input[type="number"],
+  .field input[type="text"],
+  .field input[type="email"],
+  .field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    color: var(--gray-900);
+    background: var(--gray-100);
+    transition: border-color 0.15s, background 0.15s;
+    font-family: inherit;
+  }
+  .field input:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--blue-mid);
+    background: var(--white);
+    box-shadow: 0 0 0 3px rgba(42,120,214,0.1);
+  }
+  .field textarea { resize: vertical; min-height: 70px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .row2 { grid-template-columns: 1fr; } }
+
+  /* TOGGLE */
+  .toggle-group { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .toggle-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--gray-200);
+    background: var(--white);
+    color: var(--gray-600);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn.on { background: var(--blue); border-color: var(--blue); color: white; }
+
+  /* RESULT STEPS */
+  .steps { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); overflow: hidden; }
+  .step-row {
+    display: flex;
+    align-items: center;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--gray-200);
+    gap: 8px;
+  }
+  .step-row:last-child { border-bottom: none; }
+  .step-row.total { background: var(--blue-light); }
+  .step-row.praemie-highlight { background: var(--success-bg); }
+  .step-name { flex: 1; font-size: 14px; color: var(--gray-600); }
+  .step-row.total .step-name { font-weight: 600; color: var(--blue); }
+  .step-row.praemie-highlight .step-name { font-weight: 600; color: var(--success); }
+  .step-val { font-size: 15px; font-weight: 600; color: var(--gray-900); text-align: right; }
+  .step-val.neg { color: var(--danger); }
+  .step-val.pos { color: var(--success); }
+  .step-row.total .step-val { color: var(--blue); font-size: 17px; }
+  .step-row.praemie-highlight .step-val { color: var(--success); font-size: 18px; }
+
+  /* PRAEMIE CARDS */
+  .praemie-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 14px; }
+  .praemie-card {
+    background: var(--gray-100);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    text-align: center;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .praemie-card.selected { border-color: var(--blue-mid); background: var(--blue-light); }
+  .praemie-card .pct { font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: var(--gray-400); text-transform: uppercase; margin-bottom: 4px; }
+  .praemie-card.selected .pct { color: var(--blue); }
+  .praemie-card .val { font-size: 17px; font-weight: 700; color: var(--gray-900); }
+  .praemie-card.selected .val { color: var(--blue); }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 11px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--blue); color: white; }
+  .btn-primary:hover { background: #1448820; filter: brightness(1.08); }
+  .btn-secondary { background: var(--gray-100); color: var(--gray-600); border: 1px solid var(--gray-200); }
+  .btn-secondary:hover { background: var(--gray-200); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-danger { background: var(--danger-bg); color: var(--danger); border: 1px solid #fca5a5; }
+  .btn-full { width: 100%; }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* SAVED LIST */
+  .saved-item {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: box-shadow 0.15s;
+  }
+  .saved-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.08); }
+  .saved-icon {
+    width: 42px; height: 42px;
+    background: var(--blue-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 18px;
+  }
+  .saved-info { flex: 1; min-width: 0; }
+  .saved-name { font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .saved-meta { font-size: 12px; color: var(--gray-400); margin-top: 2px; }
+  .saved-praemie { font-size: 16px; font-weight: 700; color: var(--success); flex-shrink: 0; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: var(--gray-400); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-title { font-size: 16px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+  .empty-sub { font-size: 14px; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+  }
+  @media (min-width: 480px) {
+    .modal-overlay { align-items: center; padding: 20px; }
+  }
+  .modal {
+    background: var(--white);
+    border-radius: 16px 16px 0 0;
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  @media (min-width: 480px) {
+    .modal { border-radius: 16px; }
+  }
+  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+  .modal-handle { width: 36px; height: 4px; background: var(--gray-200); border-radius: 2px; margin: 0 auto 16px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--gray-900);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  /* DIVIDER */
+  .divider { border: none; border-top: 1px solid var(--gray-200); margin: 14px 0; }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+
+  /* SECTION hidden */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* PWA install banner */
+  .install-banner {
+    background: var(--blue);
+    color: white;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 13px;
+    gap: 10px;
+  }
+  .install-banner.hidden { display: none; }
+
+  svg.icon { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div class="install-banner hidden" id="install-banner">
+  <span>📱 Auf iPhone: Teilen → "Zum Home-Bildschirm"</span>
+  <button onclick="document.getElementById('install-banner').classList.add('hidden')" style="background:none;border:none;color:white;font-size:18px;cursor:pointer;padding:0;">×</button>
+</div>
+
+<div class="header">
+  <div>
+    <div class="header-title">CEO Prämien-Rechner</div>
+    <div class="header-sub">Professionelle Prämienberechnung</div>
+  </div>
+  <svg class="icon" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/>
+  </svg>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('rechner')">Rechner</button>
+  <button class="tab" onclick="showTab('gespeichert')">Gespeichert <span id="saved-count-badge"></span></button>
+</div>
+
+<!-- ===== RECHNER ===== -->
+<div class="main">
+<div class="section active" id="tab-rechner">
+
+  <div class="card">
+    <div class="card-title">📋 Bezeichnung</div>
+    <div class="field">
+      <label>Name / Projekt</label>
+      <input type="text" id="calc-name" placeholder="z.B. Q1 2025, Projekt Alpha…" />
+    </div>
+    <div class="field">
+      <label>Notiz (optional)</label>
+      <textarea id="calc-notiz" placeholder="Zusätzliche Infos…" rows="2"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💰 Umsatz &amp; Kosten</div>
+    <div class="row2">
+      <div class="field">
+        <label>VK – Verkaufspreis / Umsatz (€)</label>
+        <input type="number" id="vk" placeholder="0" oninput="calc()" />
+      </div>
+      <div class="field">
+        <label>EK – Einkauf / Kosten (€)</label>
+        <input type="number" id="ek" placeholder="0" oninput="calc()" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">➖ Abzug vom Ertrag</div>
+    <div class="toggle-group">
+      <button class="toggle-btn on" id="tog-pct" onclick="setAbzugMode('pct')">Prozentsatz (%)</button>
+      <button class="toggle-btn" id="tog-fix" onclick="setAbzugMode('fix')">Fixer Betrag (€)</button>
+    </div>
+    <div class="row2">
+      <div class="field" id="field-pct">
+        <label>Abzug in %</label>
+        <input type="number" id="abzug-pct" placeholder="z.B. 5" min="0" max="100" step="0.1" oninput="calc()" />
+      </div>
+      <div class="field" id="field-fix" style="display:none;">
+        <label>Fixer Abzug (€)</label>
+        <input type="number" id="abzug-fix" placeholder="z.B. 20000" oninput="calc()" />
+      </div>
+      <div class="field">
+        <label>Bezeichnung Abzug</label>
+        <input type="text" id="abzug-name" placeholder="z.B. Rückstellung, Sonderkosten…" oninput="calc()" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 Berechnung</div>
+    <div class="steps" id="steps-box">
+      <div class="step-row">
+        <span class="step-name">VK (Umsatz)</span>
+        <span class="step-val" id="s-vk">—</span>
+      </div>
+      <div class="step-row">
+        <span class="step-name">− EK (Kosten)</span>
+        <span class="step-val neg" id="s-ek">—</span>
+      </div>
+      <div class="step-row total">
+        <span class="step-name">= Ertrag</span>
+        <span class="step-val" id="s-ertrag">—</span>
+      </div>
+      <div class="step-row">
+        <span class="step-name" id="s-abzug-label">− Abzug</span>
+        <span class="step-val neg" id="s-abzug">—</span>
+      </div>
+      <div class="step-row total">
+        <span class="step-name">= Basis Prämie (Netto-Ertrag)</span>
+        <span class="step-val" id="s-netto">—</span>
+      </div>
+    </div>
+
+    <div class="praemie-grid">
+      <div class="praemie-card selected" id="pc-5" onclick="selPct(5)">
+        <div class="pct">5 %</div>
+        <div class="val" id="pv-5">—</div>
+      </div>
+      <div class="praemie-card" id="pc-10" onclick="selPct(10)">
+        <div class="pct">10 %</div>
+        <div class="val" id="pv-10">—</div>
+      </div>
+      <div class="praemie-card" id="pc-20" onclick="selPct(20)">
+        <div class="pct">20 %</div>
+        <div class="val" id="pv-20">—</div>
+      </div>
+    </div>
+
+    <div class="steps" style="margin-top:12px;">
+      <div class="step-row praemie-highlight">
+        <span class="step-name" id="final-label">Deine Prämie (5 %)</span>
+        <span class="step-val pos" id="final-val">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-bottom:20px;">
+    <button class="btn btn-primary" style="flex:1;" onclick="speichern()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+      Speichern
+    </button>
+    <button class="btn btn-success" style="flex:1;" onclick="exportPDF()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      PDF erstellen
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="resetForm()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+    </button>
+  </div>
+
+</div>
+
+<!-- ===== GESPEICHERT ===== -->
+<div class="section" id="tab-gespeichert">
+  <div id="saved-list"></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- MODAL: Detail Ansicht -->
+<div class="modal-overlay" id="detail-modal" style="display:none;" onclick="closeModal(event)">
+  <div class="modal" id="detail-modal-content">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="dm-title">Berechnung</div>
+    <div id="dm-body"></div>
+    <hr class="divider">
+    <div class="btn-row" style="margin-top:4px;">
+      <button class="btn btn-success" style="flex:1;" onclick="exportPDFfromDetail()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        PDF erstellen
+      </button>
+      <button class="btn btn-primary" style="flex:1;" onclick="loadIntoCalc()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Bearbeiten
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="deleteEntry()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF EMAIL MODAL -->
+<div class="modal-overlay" id="pdf-modal" style="display:none;" onclick="closePdfModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">PDF senden</div>
+    <div class="field">
+      <label>Empfänger Name</label>
+      <input type="text" id="pdf-recipient" placeholder="Max Mustermann" />
+    </div>
+    <div class="field">
+      <label>E-Mail (optional, für Notiz im PDF)</label>
+      <input type="email" id="pdf-email" placeholder="kollege@firma.de" />
+    </div>
+    <div class="field">
+      <label>Absender / Firma</label>
+      <input type="text" id="pdf-sender" placeholder="Ihr Name / Firma" />
+    </div>
+    <div class="field">
+      <label>Nachricht (optional)</label>
+      <textarea id="pdf-message" placeholder="Bitte finden Sie anbei die Prämienberechnung…" rows="3"></textarea>
+    </div>
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn btn-success btn-full" onclick="generateAndDownloadPDF()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        PDF herunterladen &amp; teilen
+      </button>
+    </div>
+    <button class="btn btn-secondary btn-full" style="margin-top:8px;" onclick="document.getElementById('pdf-modal').style.display='none'">Abbrechen</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---- STATE ----
+let abzugMode = 'pct';
+let selPraemiePct = 5;
+let savedEntries = JSON.parse(localStorage.getItem('praemien_entries') || '[]');
+let detailIndex = null;
+let detailData = null;
+
+// ---- FORMAT ----
+function fmt(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 2 });
+}
+function fmtPct(n) { return (n || 0).toFixed(1).replace('.0','') + ' %'; }
+
+// ---- TABS ----
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', ['rechner','gespeichert'][i] === t));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  if (t === 'gespeichert') renderSaved();
+}
+
+// ---- ABZUG MODE ----
+function setAbzugMode(m) {
+  abzugMode = m;
+  document.getElementById('tog-pct').classList.toggle('on', m === 'pct');
+  document.getElementById('tog-fix').classList.toggle('on', m === 'fix');
+  document.getElementById('field-pct').style.display = m === 'pct' ? '' : 'none';
+  document.getElementById('field-fix').style.display = m === 'fix' ? '' : 'none';
+  calc();
+}
+
+function selPct(p) {
+  selPraemiePct = p;
+  [5,10,20].forEach(x => document.getElementById('pc-'+x).classList.toggle('selected', x === p));
+  calc();
+}
+
+// ---- CALC ----
+function getCalcData() {
+  const vk = parseFloat(document.getElementById('vk').value) || 0;
+  const ek = parseFloat(document.getElementById('ek').value) || 0;
+  const ertrag = vk - ek;
+  const abzugNameVal = document.getElementById('abzug-name').value.trim();
+  let abzug = 0, abzugPct = 0;
+  if (abzugMode === 'pct') {
+    abzugPct = parseFloat(document.getElementById('abzug-pct').value) || 0;
+    abzug = ertrag * (abzugPct / 100);
+  } else {
+    abzug = parseFloat(document.getElementById('abzug-fix').value) || 0;
+  }
+  const netto = ertrag - abzug;
+  return { vk, ek, ertrag, abzug, abzugPct, abzugMode, abzugName: abzugNameVal, netto,
+    p5: netto * 0.05, p10: netto * 0.10, p20: netto * 0.20,
+    selPct: selPraemiePct, praemie: netto * (selPraemiePct / 100),
+    name: document.getElementById('calc-name').value.trim() || 'Berechnung',
+    notiz: document.getElementById('calc-notiz').value.trim(),
+    date: new Date().toLocaleDateString('de-DE')
+  };
+}
+
+function calc() {
+  const d = getCalcData();
+  document.getElementById('s-vk').textContent = d.vk > 0 ? fmt(d.vk) : '—';
+  document.getElementById('s-ek').textContent = d.ek > 0 ? fmt(d.ek) : '—';
+  document.getElementById('s-ertrag').textContent = (d.vk > 0 || d.ek > 0) ? fmt(d.ertrag) : '—';
+  const aLabel = d.abzugMode === 'pct'
+    ? ('− Abzug (' + fmtPct(d.abzugPct) + (d.abzugName ? ' – ' + d.abzugName : '') + ')')
+    : ('− Abzug (fix' + (d.abzugName ? ' – ' + d.abzugName : '') + ')');
+  document.getElementById('s-abzug-label').textContent = aLabel;
+  document.getElementById('s-abzug').textContent = d.abzug > 0 ? fmt(d.abzug) : '—';
+  document.getElementById('s-netto').textContent = (d.vk > 0 || d.ek > 0) ? fmt(d.netto) : '—';
+  document.getElementById('pv-5').textContent = d.netto > 0 ? fmt(d.p5) : '—';
+  document.getElementById('pv-10').textContent = d.netto > 0 ? fmt(d.p10) : '—';
+  document.getElementById('pv-20').textContent = d.netto > 0 ? fmt(d.p20) : '—';
+  document.getElementById('final-label').textContent = 'Deine Prämie (' + d.selPct + ' %)';
+  document.getElementById('final-val').textContent = d.netto > 0 ? fmt(d.praemie) : '—';
+}
+
+// ---- SAVE ----
+function speichern() {
+  const d = getCalcData();
+  if (!d.vk && !d.ek) { toast('Bitte VK und EK eingeben'); return; }
+  d.id = Date.now();
+  savedEntries.unshift(d);
+  localStorage.setItem('praemien_entries', JSON.stringify(savedEntries));
+  updateBadge();
+  toast('✅ Gespeichert: ' + d.name);
+}
+
+function updateBadge() {
+  const el = document.getElementById('saved-count-badge');
+  el.textContent = savedEntries.length > 0 ? ' (' + savedEntries.length + ')' : '';
+}
+
+function resetForm() {
+  ['vk','ek','abzug-pct','abzug-fix','abzug-name','calc-name','calc-notiz'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  calc();
+}
+
+// ---- SAVED LIST ----
+function renderSaved() {
+  const el = document.getElementById('saved-list');
+  if (savedEntries.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">📁</div><div class="empty-title">Noch keine Berechnungen</div><div class="empty-sub">Erstelle eine Berechnung und speichere sie.</div></div>';
+    return;
+  }
+  el.innerHTML = savedEntries.map((e, i) => `
+    <div class="saved-item" onclick="openDetail(${i})">
+      <div class="saved-icon">📊</div>
+      <div class="saved-info">
+        <div class="saved-name">${e.name}</div>
+        <div class="saved-meta">${e.date} · VK ${fmt(e.vk)} · EK ${fmt(e.ek)} · Ertrag ${fmt(e.ertrag)}</div>
+      </div>
+      <div class="saved-praemie">${fmt(e.praemie)}</div>
+    </div>
+  `).join('');
+}
+
+// ---- DETAIL MODAL ----
+function openDetail(i) {
+  detailIndex = i;
+  detailData = savedEntries[i];
+  const d = detailData;
+  document.getElementById('dm-title').textContent = d.name;
+  const abzugLabel = d.abzugMode === 'pct'
+    ? ('Abzug ' + fmtPct(d.abzugPct) + (d.abzugName ? ' – ' + d.abzugName : ''))
+    : ('Fixer Abzug' + (d.abzugName ? ' – ' + d.abzugName : ''));
+  document.getElementById('dm-body').innerHTML = `
+    <div style="font-size:12px;color:var(--gray-400);margin-bottom:12px;">${d.date}${d.notiz ? ' · ' + d.notiz : ''}</div>
+    <div class="steps">
+      <div class="step-row"><span class="step-name">VK (Umsatz)</span><span class="step-val">${fmt(d.vk)}</span></div>
+      <div class="step-row"><span class="step-name">− EK (Kosten)</span><span class="step-val neg">${fmt(d.ek)}</span></div>
+      <div class="step-row total"><span class="step-name">= Ertrag</span><span class="step-val">${fmt(d.ertrag)}</span></div>
+      <div class="step-row"><span class="step-name">− ${abzugLabel}</span><span class="step-val neg">${fmt(d.abzug)}</span></div>
+      <div class="step-row total"><span class="step-name">= Basis Prämie</span><span class="step-val">${fmt(d.netto)}</span></div>
+      <div class="step-row praemie-highlight"><span class="step-name">Prämie ${d.selPct} %</span><span class="step-val pos">${fmt(d.praemie)}</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
+      ${[5,10,20].map(p => `<div style="background:var(--gray-100);border-radius:8px;padding:10px;text-align:center;${p===d.selPct?'border:2px solid var(--blue-mid);background:var(--blue-light)':''}"><div style="font-size:11px;font-weight:700;color:${p===d.selPct?'var(--blue)':'var(--gray-400)'};">${p} %</div><div style="font-size:15px;font-weight:700;color:${p===d.selPct?'var(--blue)':'var(--gray-900)'};">${fmt(d.netto * p / 100)}</div></div>`).join('')}
+    </div>
+  `;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+function closeModal(e) {
+  if (e.target.id === 'detail-modal') document.getElementById('detail-modal').style.display = 'none';
+}
+
+function deleteEntry() {
+  if (!confirm('Eintrag löschen?')) return;
+  savedEntries.splice(detailIndex, 1);
+  localStorage.setItem('praemien_entries', JSON.stringify(savedEntries));
+  updateBadge();
+  document.getElementById('detail-modal').style.display = 'none';
+  renderSaved();
+  toast('🗑 Gelöscht');
+}
+
+function loadIntoCalc() {
+  const d = detailData;
+  document.getElementById('vk').value = d.vk || '';
+  document.getElementById('ek').value = d.ek || '';
+  document.getElementById('calc-name').value = d.name || '';
+  document.getElementById('calc-notiz').value = d.notiz || '';
+  document.getElementById('abzug-name').value = d.abzugName || '';
+  setAbzugMode(d.abzugMode || 'pct');
+  if (d.abzugMode === 'pct') document.getElementById('abzug-pct').value = d.abzugPct || '';
+  else document.getElementById('abzug-fix').value = d.abzug || '';
+  selPct(d.selPct || 5);
+  calc();
+  document.getElementById('detail-modal').style.display = 'none';
+  showTab('rechner');
+}
+
+// ---- PDF ----
+let pdfSourceData = null;
+
+function exportPDF() {
+  pdfSourceData = getCalcData();
+  if (!pdfSourceData.vk && !pdfSourceData.ek) { toast('Bitte Zahlen eingeben'); return; }
+  document.getElementById('pdf-modal').style.display = 'flex';
+}
+
+function exportPDFfromDetail() {
+  pdfSourceData = detailData;
+  document.getElementById('detail-modal').style.display = 'none';
+  document.getElementById('pdf-modal').style.display = 'flex';
+}
+
+function closePdfModal(e) {
+  if (e.target.id === 'pdf-modal') document.getElementById('pdf-modal').style.display = 'none';
+}
+
+function generateAndDownloadPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const d = pdfSourceData;
+  const recipient = document.getElementById('pdf-recipient').value.trim();
+  const email = document.getElementById('pdf-email').value.trim();
+  const sender = document.getElementById('pdf-sender').value.trim();
+  const message = document.getElementById('pdf-message').value.trim();
+
+  const W = 210, marginL = 18, marginR = 192;
+
+  // Header bar
+  doc.setFillColor(26, 86, 160);
+  doc.rect(0, 0, W, 32, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('CEO Prämien-Berechnung', marginL, 14);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(d.name + '  |  ' + d.date, marginL, 22);
+  if (sender) doc.text(sender, marginR, 22, { align: 'right' });
+
+  let y = 44;
+
+  // Recipient block
+  if (recipient || email) {
+    doc.setTextColor(74, 82, 96);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('AN:', marginL, y);
+    doc.setTextColor(26, 86, 160);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text(recipient || email, marginL + 12, y);
+    if (email && recipient) {
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      doc.setTextColor(74, 82, 96);
+      doc.text(email, marginL + 12, y + 5);
+      y += 5;
+    }
+    y += 10;
+  }
+
+  // Message
+  if (message) {
+    doc.setTextColor(74, 82, 96);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    const lines = doc.splitTextToSize(message, marginR - marginL);
+    doc.text(lines, marginL, y);
+    y += lines.length * 5 + 8;
+  }
+
+  // Section: Berechnung
+  doc.setFillColor(232, 240, 250);
+  doc.rect(marginL - 2, y - 4, marginR - marginL + 4, 9, 'F');
+  doc.setTextColor(26, 86, 160);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('BERECHNUNG', marginL, y + 2);
+  y += 10;
+
+  const abzugLabel = d.abzugMode === 'pct'
+    ? 'Abzug ' + fmtPct(d.abzugPct) + (d.abzugName ? ' – ' + d.abzugName : '')
+    : 'Fixer Abzug' + (d.abzugName ? ' – ' + d.abzugName : '');
+
+  const rows = [
+    { label: 'VK – Verkaufspreis / Umsatz', val: fmt(d.vk), color: [26,86,160] },
+    { label: '– EK – Einkauf / Kosten', val: fmt(d.ek), color: [185,28,28] },
+    { label: '= Ertrag (VK – EK)', val: fmt(d.ertrag), bold: true, bg: [232,240,250] },
+    { label: '– ' + abzugLabel, val: fmt(d.abzug), color: [185,28,28] },
+    { label: '= Netto-Ertrag (Basis Prämie)', val: fmt(d.netto), bold: true, bg: [232,240,250] },
+  ];
+
+  rows.forEach(r => {
+    if (r.bg) { doc.setFillColor(...r.bg); doc.rect(marginL - 2, y - 4, marginR - marginL + 4, 8, 'F'); }
+    doc.setFont('helvetica', r.bold ? 'bold' : 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(r.color ? r.color[0] : 26, r.color ? r.color[1] : 86, r.color ? r.color[2] : 160);
+    if (r.bold) doc.setTextColor(26, 86, 160);
+    else if (!r.color) doc.setTextColor(74, 82, 96);
+    doc.text(r.label, marginL, y);
+    doc.setTextColor(r.color ? r.color[0] : 26, r.color ? r.color[1] : 86, r.color ? r.color[2] : 160);
+    if (r.bold) doc.setTextColor(26, 86, 160);
+    doc.setFont('helvetica', r.bold ? 'bold' : 'normal');
+    doc.text(r.val, marginR, y, { align: 'right' });
+    y += 9;
+  });
+
+  y += 6;
+
+  // Praemie Section
+  doc.setFillColor(26, 86, 160);
+  doc.rect(marginL - 2, y - 4, marginR - marginL + 4, 9, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PRÄMIE', marginL, y + 2);
+  y += 12;
+
+  // 3 praemie boxes
+  const boxW = (marginR - marginL - 8) / 3;
+  [5, 10, 20].forEach((p, i) => {
+    const x = marginL + i * (boxW + 4);
+    const isSelected = p === d.selPct;
+    if (isSelected) {
+      doc.setFillColor(14, 124, 74);
+    } else {
+      doc.setFillColor(244, 245, 247);
+    }
+    doc.roundedRect(x, y, boxW, 22, 3, 3, 'F');
+    doc.setTextColor(isSelected ? 255 : 74, isSelected ? 255 : 82, isSelected ? 255 : 96);
+    doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+    doc.text(p + ' %', x + boxW / 2, y + 7, { align: 'center' });
+    doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+    doc.setTextColor(isSelected ? 255 : 26, isSelected ? 255 : 86, isSelected ? 255 : 160);
+    doc.text(fmt(d.netto * p / 100), x + boxW / 2, y + 16, { align: 'center' });
+  });
+
+  y += 28;
+
+  // Final praemie highlight
+  doc.setFillColor(14, 124, 74);
+  doc.rect(marginL - 2, y - 4, marginR - marginL + 4, 12, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11); doc.setFont('helvetica', 'bold');
+  doc.text('Prämie ' + d.selPct + ' %', marginL, y + 4);
+  doc.setFontSize(14);
+  doc.text(fmt(d.praemie), marginR, y + 4, { align: 'right' });
+
+  y += 20;
+
+  // Notiz
+  if (d.notiz) {
+    doc.setTextColor(74, 82, 96);
+    doc.setFontSize(9); doc.setFont('helvetica', 'italic');
+    doc.text('Notiz: ' + d.notiz, marginL, y);
+    y += 7;
+  }
+
+  // Footer
+  doc.setFillColor(26, 86, 160);
+  doc.rect(0, 282, W, 15, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+  doc.text('CEO Prämien-Rechner  |  Erstellt am ' + new Date().toLocaleString('de-DE'), marginL, 290);
+  if (email) doc.text(email, marginR, 290, { align: 'right' });
+
+  const filename = 'Praemie_' + d.name.replace(/\s+/g, '_') + '_' + d.date.replace(/\./g, '-') + '.pdf';
+  doc.save(filename);
+  document.getElementById('pdf-modal').style.display = 'none';
+  toast('📄 PDF heruntergeladen');
+}
+
+// ---- TOAST ----
+function toast(msg, dur = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// ---- iOS INSTALL BANNER ----
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+if (isIOS && !isStandalone) {
+  document.getElementById('install-banner').classList.remove('hidden');
+}
+
+// ---- INIT ----
+updateBadge();
+</script>
+</body>
+</html>
